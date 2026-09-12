@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import { organizationRoutes } from "./routes/organizations.js";
 
 const app = Fastify({ logger: true });
 
@@ -13,6 +14,8 @@ app.get("/api/v1", async () => ({
   version: "v1",
   domains: ["identity", "organizations", "memberships"],
 }));
+
+await app.register(organizationRoutes);
 
 const port = Number(process.env.PORT ?? 4000);
 
