@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: communityhub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: communityhub
+      POSTGRES_PASSWORD: change-me-local-only
+      POSTGRES_DB: communityhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - communityhub-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U communityhub -d communityhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  communityhub-postgres-data:
