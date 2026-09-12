@@ -3,7 +3,7 @@ import {
   canAccessOrganization,
   canAdministerOrganization,
   type AuthContext,
-} from "./authorization";
+} from "./authorization.js";
 
 const memberContext: AuthContext = {
   userId: "user-1",
