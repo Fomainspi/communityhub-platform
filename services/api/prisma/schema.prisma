@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MembershipRole {
+  MEMBER
+  COMMUNITY_ADMIN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  LEFT
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  displayName  String
+  status       UserStatus   @default(ACTIVE)
+  memberships  Membership[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("users")
+}
+
+model Organization {
+  id           String       @id @default(uuid())
+  slug         String       @unique
+  name         String
+  status       OrganizationStatus @default(ACTIVE)
+  memberships  Membership[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String           @id @default(uuid())
+  userId         String
+  organizationId String
+  role           MembershipRole   @default(MEMBER)
+  status         MembershipStatus @default(ACTIVE)
+  joinedAt       DateTime?
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, status])
+  @@index([userId, status])
+  @@map("memberships")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  actorUserId    String?
+  organizationId String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  metadata       Json?
+  actorUser     User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
