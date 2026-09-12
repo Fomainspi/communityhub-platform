@@ -21,5 +21,7 @@ jobs:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm prisma:validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/communityhub
       - run: pnpm typecheck
       - run: pnpm test
