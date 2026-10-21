@@ -52,6 +52,19 @@ Do not run `migrate dev` against production.
 
 Start the API with `pnpm dev:api`. The liveness endpoint `GET /health` confirms that the process is running. The readiness endpoint `GET /ready` performs a database query and returns HTTP 200 only when PostgreSQL is reachable; otherwise it returns HTTP 503 without exposing connection details.
 
+## 5. Configure Amazon Cognito authentication
+
+Set the following in `services/api/.env` using values from your Cognito User Pool and app client:
+
+- `AWS_REGION`: the AWS region containing the user pool.
+- `COGNITO_USER_POOL_ID`: the pool ID.
+- `COGNITO_CLIENT_ID`: the app client ID expected in access-token claims.
+- `COGNITO_DOMAIN`: the HTTPS base domain for the user pool's managed login / OAuth endpoints, with no path.
+
+The API validates Cognito access-token signatures against the pool's JWKS endpoint and checks issuer, expiry, token type, and app-client ID. First-time users are provisioned from Cognito's `/oauth2/userInfo` endpoint, so the app client must allow the required OAuth scopes (including `openid`) and the managed login domain must be configured. Never place client secrets, database passwords, or access tokens in source control.
+
+The API exposes `GET /api/v1/auth/me` for the current authenticated user. Organization access is determined from the user's active database memberships; a valid identity alone does not grant access to any community. The `SUPER_ADMIN` platform role must be assigned through a controlled administrative process, not from client-supplied data.
+
 ## Current scope and security note
 
-The initial migration contains users, organizations, memberships, and audit logs. The API's authentication route currently uses a temporary anonymous context, so database connectivity does not mean sign-in or tenant-scoped operations are production-ready. Do not expose this MVP as a production service until a real identity provider, token validation, user provisioning, and server-side membership authorization are implemented and tested.
+The initial migration contains users, organizations, memberships, and audit logs. Authentication and membership checks are implemented in the API, but end-to-end sign-in still depends on configuring a real Cognito user pool, app client, domain, and database. Do not expose this MVP as a production service until those settings are configured and tested, migrations have been applied, and the full sign-in and tenant-isolation flows have been verified.
