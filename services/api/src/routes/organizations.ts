@@ -66,6 +66,14 @@ export async function organizationRoutes(app: FastifyInstance) {
       }
 
       const { organizationId } = request.params;
+      const organization = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { status: true },
+      });
+      if (!organization || organization.status !== "ACTIVE") {
+        return reply.code(404).send({ error: "ORGANIZATION_NOT_FOUND" });
+      }
+
       if (!canAccessOrganization(principal, organizationId)) {
         return reply.code(403).send({ error: "FORBIDDEN" });
       }
