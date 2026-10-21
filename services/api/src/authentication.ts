@@ -28,6 +28,7 @@ type CognitoJwk = JsonWebKey & {
 type UserInfo = {
   sub?: string;
   email?: string;
+  email_verified?: boolean;
   name?: string;
   preferred_username?: string;
 };
@@ -207,7 +208,7 @@ async function getCognitoUserInfo(
   }
 
   const profile = (await response.json()) as UserInfo;
-  if (profile.sub !== expectedSubject || !profile.email?.trim()) {
+  if (profile.sub !== expectedSubject || !profile.email?.trim() || profile.email_verified !== true) {
     throw new AuthenticationError(403, "PROFILE_EMAIL_REQUIRED");
   }
 
