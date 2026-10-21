@@ -151,6 +151,59 @@ describe("community member authorization and administration", () => {
     expect(txMembership.update).not.toHaveBeenCalled();
   });
 
+  it("updates a member and writes an audit record", async () => {
+    const tx = {
+      membership: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "membership-member",
+          userId: "other-user",
+          role: "MEMBER",
+          status: "ACTIVE",
+        }),
+        count: vi.fn(),
+        update: vi.fn().mockResolvedValue({
+          id: "membership-member",
+          role: "COMMUNITY_ADMIN",
+          status: "ACTIVE",
+          joinedAt: null,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          user: {
+            id: "other-user",
+            displayName: "Other Member",
+            email: "other@example.com",
+            status: "ACTIVE",
+          },
+        }),
+      },
+      auditLog: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) },
+    };
+    mockDb.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
+      callback(tx),
+    );
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/organizations/org-1/members/membership-member",
+      payload: { role: "COMMUNITY_ADMIN" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().membership).toMatchObject({
+      id: "membership-member",
+      role: "COMMUNITY_ADMIN",
+      status: "ACTIVE",
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorUserId: "admin-user",
+        organizationId: "org-1",
+        action: "MEMBERSHIP_UPDATED",
+        resourceType: "Membership",
+        resourceId: "membership-member",
+      }),
+    });
+  });
+
   afterAll(async () => {
     await app.close();
   });
