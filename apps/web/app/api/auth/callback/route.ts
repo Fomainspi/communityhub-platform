@@ -82,11 +82,19 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
-  const tokens = (await tokenResponse.json()) as {
-    access_token?: string;
-    token_type?: string;
-    expires_in?: number;
-  };
+  let tokens: { access_token?: string; token_type?: string; expires_in?: number };
+  try {
+    tokens = (await tokenResponse.json()) as {
+      access_token?: string;
+      token_type?: string;
+      expires_in?: number;
+    };
+  } catch {
+    const response = callbackError();
+    clearOAuthCookies(response, secure);
+    return response;
+  }
+
   if (!tokens.access_token || tokens.token_type?.toLowerCase() !== "bearer") {
     const response = callbackError();
     clearOAuthCookies(response, secure);
@@ -100,7 +108,7 @@ export async function GET(request: NextRequest) {
     secure,
     sameSite: "lax",
     path: "/",
-    maxAge: Math.min(Math.max(tokens.expires_in ?? 3600, 60), 3600),
+    maxAge: Math.max(1, Math.min(tokens.expires_in ?? 3600, 3600)),
   });
   return response;
 }
