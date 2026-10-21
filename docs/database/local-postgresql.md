@@ -48,11 +48,21 @@ pnpm --filter @communityhub/api prisma:migrate:status
 
 Do not run `migrate dev` against production.
 
-## 4. Verify the API
+## 4. Seed an initial organization (optional)
+
+Set `COMMUNITYHUB_SEED_ORG_SLUG` and `COMMUNITYHUB_SEED_ORG_NAME` in `services/api/.env`, then run:
+
+```bash
+pnpm --filter @communityhub/api db:seed
+```
+
+The seed is environment-driven; it does not hard-code a tenant into application logic. Run it again with a different slug and name to create another organization. To assign a community administrator, set `COMMUNITYHUB_BOOTSTRAP_ADMIN_EMAIL` to the email of a user who has already signed in through Cognito. The seed grants only that organization's `COMMUNITY_ADMIN` membership, not global super-admin privileges.
+
+## 5. Verify the API
 
 Start the API with `pnpm dev:api`. The liveness endpoint `GET /health` confirms that the process is running. The readiness endpoint `GET /ready` performs a database query and returns HTTP 200 only when PostgreSQL is reachable; otherwise it returns HTTP 503 without exposing connection details.
 
-## 5. Configure Amazon Cognito authentication
+## 6. Configure Amazon Cognito authentication
 
 Set the following in `services/api/.env` using values from your Cognito User Pool and app client:
 
