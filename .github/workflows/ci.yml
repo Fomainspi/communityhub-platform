@@ -23,5 +23,8 @@ jobs:
       - run: pnpm prisma:validate
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/communityhub
+      - run: pnpm prisma:generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/communityhub
       - run: pnpm typecheck
       - run: pnpm test
