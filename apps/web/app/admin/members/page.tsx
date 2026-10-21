@@ -2,37 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type Organization = {
-  id: string;
-  name: string;
-  slug: string;
-  role: string;
-};
-
+type Organization = { id: string; name: string; slug: string; role: string };
 type Member = {
   id: string;
   role: "MEMBER" | "COMMUNITY_ADMIN";
   status: "ACTIVE" | "INVITED" | "SUSPENDED" | "LEFT";
   joinedAt: string | null;
   createdAt: string;
-  user: {
-    id: string;
-    displayName: string;
-    email: string;
-    status: string;
-  };
+  user: { id: string; displayName: string; email: string; status: string };
 };
-
 type MemberResponse = {
   members: Member[];
   pagination: { limit: number; offset: number; total: number; hasMore: boolean };
 };
 
+const PAGE_SIZE = 25;
 const statusLabels: Record<Member["status"], string> = {
-  ACTIVE: "Active",
-  INVITED: "Invited",
-  SUSPENDED: "Suspended",
-  LEFT: "Left",
+  ACTIVE: "Active", INVITED: "Invited", SUSPENDED: "Suspended", LEFT: "Left",
 };
 
 export default function CommunityMembersPage() {
@@ -40,6 +26,8 @@ export default function CommunityMembersPage() {
   const [organizationId, setOrganizationId] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [loadingOrganizations, setLoadingOrganizations] = useState(true);
@@ -69,9 +57,7 @@ export default function CommunityMembersPage() {
       .catch((reason: unknown) => {
         if (active) setError(reason instanceof Error ? reason.message : "Could not load communities.");
       })
-      .finally(() => {
-        if (active) setLoadingOrganizations(false);
-      });
+      .finally(() => { if (active) setLoadingOrganizations(false); });
     return () => { active = false; };
   }, []);
 
@@ -79,12 +65,13 @@ export default function CommunityMembersPage() {
     if (!organizationId) {
       setMembers([]);
       setTotal(0);
+      setHasMore(false);
       return;
     }
     setLoadingMembers(true);
     setError("");
     try {
-      const params = new URLSearchParams({ limit: "100", offset: "0" });
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
       if (search) params.set("search", search);
       const response = await fetch(
         `/api/organizations/${encodeURIComponent(organizationId)}/members?${params.toString()}`,
@@ -95,12 +82,13 @@ export default function CommunityMembersPage() {
       const result = body as MemberResponse;
       setMembers(result.members);
       setTotal(result.pagination.total);
+      setHasMore(result.pagination.hasMore);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load members.");
     } finally {
       setLoadingMembers(false);
     }
-  }, [organizationId, search]);
+  }, [organizationId, offset, search]);
 
   useEffect(() => { void loadMembers(); }, [loadMembers]);
 
@@ -111,11 +99,7 @@ export default function CommunityMembersPage() {
     try {
       const response = await fetch(
         `/api/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(member.id)}`,
-        {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(patch),
-        },
+        { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) },
       );
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not update membership.");
@@ -130,7 +114,13 @@ export default function CommunityMembersPage() {
 
   function submitSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setOffset(0);
     setSearch(searchInput.trim());
+  }
+
+  function changeOrganization(nextOrganizationId: string) {
+    setOrganizationId(nextOrganizationId);
+    setOffset(0);
   }
 
   return (
@@ -154,7 +144,7 @@ export default function CommunityMembersPage() {
           {loadingOrganizations ? <p>Loading your communities…</p> : organizations.length === 0 ? (
             <p>You do not have an active community-administrator role in any community.</p>
           ) : (
-            <select id="community" value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} style={{ width: "100%", maxWidth: 480, padding: 12, border: "1px solid #dbe8de", borderRadius: 10, background: "white" }}>
+            <select id="community" value={organizationId} onChange={(event) => changeOrganization(event.target.value)} style={{ width: "100%", maxWidth: 480, padding: 12, border: "1px solid #dbe8de", borderRadius: 10, background: "white" }}>
               {organizations.map((organization) => <option value={organization.id} key={organization.id}>{organization.name}</option>)}
             </select>
           )}
@@ -168,37 +158,42 @@ export default function CommunityMembersPage() {
               <form onSubmit={submitSearch} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <input aria-label="Search members" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search name or email" style={{ padding: 11, border: "1px solid #dbe8de", borderRadius: 10, minWidth: 220 }} />
                 <button className="btn primary" type="submit">Search</button>
-                {search && <button className="btn secondary" type="button" onClick={() => { setSearchInput(""); setSearch(""); }}>Clear</button>}
+                {search && <button className="btn secondary" type="button" onClick={() => { setSearchInput(""); setSearch(""); setOffset(0); }}>Clear</button>}
               </form>
             </div>
             {loadingMembers ? <p role="status">Loading members…</p> : members.length === 0 ? <p>No members found for this search.</p> : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 14 }}>
                   <thead><tr>{["Member", "Email", "Role", "Membership status", "Actions"].map((heading) => <th key={heading} style={{ padding: "12px 10px", borderBottom: "1px solid #dbe8de", color: "#607166", whiteSpace: "nowrap" }}>{heading}</th>)}</tr></thead>
-                  <tbody>
-                    {members.map((member) => (
-                      <tr key={member.id}>
-                        <td style={{ padding: 12, borderBottom: "1px solid #edf2ee", fontWeight: 700, whiteSpace: "nowrap" }}>{member.user.displayName}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>{member.user.email}</td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>
-                          <select aria-label={`Role for ${member.user.displayName}`} disabled={busyId === member.id || member.status === "LEFT"} value={member.role} onChange={(event) => void updateMember(member, { role: event.target.value as Member["role"] })} style={{ padding: 8, border: "1px solid #dbe8de", borderRadius: 8, background: "white" }}>
-                            <option value="MEMBER">Member</option><option value="COMMUNITY_ADMIN">Community Admin</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>
-                          <span className="pill">{statusLabels[member.status]}</span>
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>
-                          <select aria-label={`Status for ${member.user.displayName}`} disabled={busyId === member.id || member.status === "LEFT"} value={member.status} onChange={(event) => void updateMember(member, { status: event.target.value as Member["status"] })} style={{ padding: 8, border: "1px solid #dbe8de", borderRadius: 8, background: "white" }}>
-                            <option value="ACTIVE">Active</option><option value="INVITED">Invited</option><option value="SUSPENDED">Suspended</option><option value="LEFT">Left</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  <tbody>{members.map((member) => (
+                    <tr key={member.id}>
+                      <td style={{ padding: 12, borderBottom: "1px solid #edf2ee", fontWeight: 700, whiteSpace: "nowrap" }}>{member.user.displayName}</td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>{member.user.email}</td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>
+                        <select aria-label={`Role for ${member.user.displayName}`} disabled={busyId === member.id || member.status === "LEFT"} value={member.role} onChange={(event) => void updateMember(member, { role: event.target.value as Member["role"] })} style={{ padding: 8, border: "1px solid #dbe8de", borderRadius: 8, background: "white" }}>
+                          <option value="MEMBER">Member</option><option value="COMMUNITY_ADMIN">Community Admin</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}><span className="pill">{statusLabels[member.status]}</span></td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #edf2ee" }}>
+                        <select aria-label={`Status for ${member.user.displayName}`} disabled={busyId === member.id || member.status === "LEFT"} value={member.status} onChange={(event) => void updateMember(member, { status: event.target.value as Member["status"] })} style={{ padding: 8, border: "1px solid #dbe8de", borderRadius: 8, background: "white" }}>
+                          <option value="ACTIVE">Active</option><option value="INVITED">Invited</option><option value="SUSPENDED">Suspended</option><option value="LEFT">Left</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}</tbody>
                 </table>
               </div>
             )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 18, flexWrap: "wrap" }}>
+              <span style={{ color: "#607166", fontSize: 13 }}>
+                {total === 0 ? "No results" : `Showing ${offset + 1}–${Math.min(offset + members.length, total)} of ${total}`}
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn secondary" type="button" disabled={offset === 0 || loadingMembers} onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))}>Previous</button>
+                <button className="btn secondary" type="button" disabled={!hasMore || loadingMembers} onClick={() => setOffset((current) => current + PAGE_SIZE)}>Next</button>
+              </div>
+            </div>
           </section>
         )}
       </section>
