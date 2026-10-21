@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import { authenticationRoutes } from "./routes/authentication.js";
 import { organizationRoutes } from "./routes/organizations.js";
 import { systemRoutes } from "./routes/system.js";
 
@@ -17,6 +18,7 @@ app.get("/api/v1", async () => ({
 }));
 
 await app.register(systemRoutes);
+await app.register(authenticationRoutes);
 await app.register(organizationRoutes);
 
 const port = Number(process.env.PORT ?? 4000);
