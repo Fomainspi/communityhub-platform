@@ -13,7 +13,8 @@
     "prisma:validate": "prisma validate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:migrate:status": "prisma migrate status"
+    "prisma:migrate:status": "prisma migrate status",
+    "db:seed": "node --env-file-if-exists=.env --import tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
