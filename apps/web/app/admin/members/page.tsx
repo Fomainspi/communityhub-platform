@@ -21,6 +21,22 @@ const statusLabels: Record<Member["status"], string> = {
   ACTIVE: "Active", INVITED: "Invited", SUSPENDED: "Suspended", LEFT: "Left",
 };
 
+function apiErrorMessage(code: unknown, fallback: string): string {
+  if (typeof code !== "string") return fallback;
+  const messages: Record<string, string> = {
+    UNAUTHORIZED: "Your session has expired. Please sign in again.",
+    FORBIDDEN: "You do not have permission to manage this community.",
+    ORGANIZATION_NOT_FOUND: "This community is unavailable or inactive.",
+    MEMBERSHIP_NOT_FOUND: "This membership could not be found. Refresh the page and try again.",
+    CANNOT_MODIFY_OWN_MEMBERSHIP: "You cannot change your own community membership.",
+    LAST_COMMUNITY_ADMIN: "This change would leave the community without an active administrator.",
+    CONCURRENT_MEMBERSHIP_CHANGE: "Another membership change happened at the same time. Refresh and try again.",
+    API_UNAVAILABLE: "The CommunityHub API is temporarily unavailable. Please try again shortly.",
+    AUTHENTICATION_NOT_CONFIGURED: "Sign-in is not configured for this environment yet.",
+  };
+  return messages[code] ?? fallback;
+}
+
 export default function CommunityMembersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationId, setOrganizationId] = useState("");
@@ -46,7 +62,7 @@ export default function CommunityMembersPage() {
     fetch("/api/organizations", { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "Could not load communities.");
+        if (!response.ok) throw new Error(apiErrorMessage(body.error, "Could not load communities."));
         const manageable = (body.organizations as Organization[]).filter(
           (organization) => organization.role === "COMMUNITY_ADMIN" || organization.role === "SUPER_ADMIN",
         );
@@ -78,7 +94,7 @@ export default function CommunityMembersPage() {
         { cache: "no-store" },
       );
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Could not load members.");
+      if (!response.ok) throw new Error(apiErrorMessage(body.error, "Could not load members."));
       const result = body as MemberResponse;
       setMembers(result.members);
       setTotal(result.pagination.total);
@@ -102,7 +118,7 @@ export default function CommunityMembersPage() {
         { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) },
       );
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Could not update membership.");
+      if (!response.ok) throw new Error(apiErrorMessage(body.error, "Could not update membership."));
       setNotice(`Updated membership for ${member.user.displayName}.`);
       await loadMembers();
     } catch (reason) {
