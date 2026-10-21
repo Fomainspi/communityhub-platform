@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.15.0",
   "scripts": {
+    "dev:web": "pnpm --filter @communityhub/web dev",
+    "dev:api": "pnpm --filter @communityhub/api dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

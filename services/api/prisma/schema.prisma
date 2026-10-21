@@ -13,6 +13,11 @@ enum UserStatus {
   DELETED
 }
 
+enum PlatformRole {
+  USER
+  SUPER_ADMIN
+}
+
 enum OrganizationStatus {
   ACTIVE
   SUSPENDED
@@ -32,14 +37,16 @@ enum MembershipStatus {
 }
 
 model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
-  displayName  String
-  status       UserStatus   @default(ACTIVE)
-  memberships  Membership[]
-  auditLogs    AuditLog[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id             String       @id @default(uuid())
+  authSubject    String?      @unique
+  email          String       @unique
+  displayName    String
+  status         UserStatus   @default(ACTIVE)
+  platformRole   PlatformRole @default(USER)
+  memberships    Membership[]
+  auditLogs      AuditLog[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@map("users")
 }
@@ -83,7 +90,7 @@ model AuditLog {
   resourceType   String
   resourceId     String?
   metadata       Json?
-  actorUser     User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorUser      User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())
 
