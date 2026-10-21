@@ -19,6 +19,7 @@ type CognitoClaims = {
 };
 
 type CognitoJwk = JsonWebKey & {
+  [key: string]: string | number | boolean | string[] | undefined;
   kid?: string;
   use?: string;
   alg?: string;
