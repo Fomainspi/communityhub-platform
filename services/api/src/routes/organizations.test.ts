@@ -8,8 +8,8 @@ describe("organization API", () => {
       url: "/api/v1/organizations/acpinc/access",
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: "FORBIDDEN" });
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ error: "UNAUTHORIZED" });
   });
 
   afterAll(async () => {
