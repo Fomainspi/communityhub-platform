@@ -211,7 +211,7 @@ export async function memberRoutes(app: FastifyInstance) {
           });
 
           return { membership };
-        });
+        }, { isolationLevel: "Serializable" });
 
         if (!updated) return reply.code(404).send({ error: "MEMBERSHIP_NOT_FOUND" });
         if ("error" in updated) {
@@ -220,6 +220,14 @@ export async function memberRoutes(app: FastifyInstance) {
         }
         return { membership: updated.membership };
       } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "P2034"
+        ) {
+          return reply.code(409).send({ error: "CONCURRENT_MEMBERSHIP_CHANGE" });
+        }
         request.log.error({ err: error }, "Failed to update community membership");
         return reply.code(500).send({ error: "INTERNAL_SERVER_ERROR" });
       }
